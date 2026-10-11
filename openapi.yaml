@@ -1,0 +1,81 @@
+{
+  "openapi": "3.0.3",
+  "info":
+    { "title": "RoleFit Notification Service health", "version": "0.1.0" },
+  "servers": [{ "url": "http://localhost:3005" }],
+  "paths":
+    {
+      "/health":
+        {
+          "get":
+            {
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Ready / live",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                { "$ref": "#/components/schemas/Health" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+      "/ready":
+        {
+          "get":
+            {
+              "responses":
+                {
+                  "200":
+                    {
+                      "description": "Ready / live",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                { "$ref": "#/components/schemas/Health" },
+                            },
+                        },
+                    },
+                  "503":
+                    {
+                      "description": "Database or broker unavailable",
+                      "content":
+                        {
+                          "application/json":
+                            {
+                              "schema":
+                                { "$ref": "#/components/schemas/Health" },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+  "components":
+    {
+      "schemas":
+        {
+          "Health":
+            {
+              "type": "object",
+              "required": ["status"],
+              "properties":
+                {
+                  "status": { "type": "string" },
+                  "service": { "type": "string" },
+                  "database": { "type": "boolean" },
+                  "broker": { "type": "boolean" },
+                },
+            },
+        },
+    },
+}
