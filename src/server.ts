@@ -5,6 +5,7 @@ import { Broker } from "./broker";
 import { consume } from "./consumer";
 import { createMailer } from "./email";
 import { deliverNext } from "./delivery";
+import { logger } from "./logger";
 const pool = createPool();
 const send = createMailer();
 const broker = new Broker(
@@ -39,7 +40,7 @@ app.use((_req, res) =>
 const server = app.listen(
   integer("PORT", 3005),
   process.env.HOST || "0.0.0.0",
-  () => console.log("Notification health HTTP listening"),
+  () => logger.info("Notification health HTTP listening"),
 );
 let stopping = false;
 broker.start();
@@ -48,7 +49,7 @@ const worker = (async () => {
     try {
       if (await deliverNext(pool, send)) continue;
     } catch {
-      console.error("Delivery storage unavailable; will retry");
+      logger.error("Delivery storage unavailable; will retry");
     }
     await delay(500);
   }
