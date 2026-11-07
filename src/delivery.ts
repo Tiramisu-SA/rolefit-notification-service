@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
-import type { StatusEvent } from "./event";
+import type { NotificationEvent } from "./event";
 import { isPermanent } from "./email";
 import { logger } from "./logger";
 export const RETRY_SECONDS = [10, 30, 60] as const;
@@ -12,7 +12,7 @@ export function retryDelay(attempt: number, permanent: boolean): number | null {
 
 export async function deliverNext(
   pool: Pool,
-  send: (event: StatusEvent) => Promise<void>,
+  send: (event: NotificationEvent) => Promise<void>,
 ): Promise<boolean> {
   // An interrupted fourth send may have succeeded. Retain failure instead of making a fifth send.
   await pool.query(

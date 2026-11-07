@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import type { StatusEvent } from "./event";
+import type { NotificationEvent } from "./event";
 import { integer } from "./config";
 
 export function escapeHtml(value: string): string {
@@ -11,11 +11,28 @@ export function escapeHtml(value: string): string {
       ]!,
   );
 }
-export function email(event: StatusEvent, from: string) {
-  return {
+export function email(event: NotificationEvent, from: string) {
+  const base = {
     from,
     to: { name: event.recipient.name, address: event.recipient.email },
     messageId: `<${event.eventId}@rolefit.local>`,
+  };
+  if (event.eventType === "job.deadline.reminder.v1") {
+    const date = new Date(event.deadline).toLocaleDateString("en-GB", {
+      timeZone: "UTC",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    return {
+      ...base,
+      subject: `Reminder: ${event.jobTitle} closes soon`,
+      text: `Hello ${event.recipient.name},\n\n${event.jobTitle} closes on ${date}. You prepared a resume for this job but have not applied yet.\n`,
+      html: `<p>Hello ${escapeHtml(event.recipient.name)},</p><p><strong>${escapeHtml(event.jobTitle)}</strong> closes on ${escapeHtml(date)}. You prepared a resume for this job but have not applied yet.</p>`,
+    };
+  }
+  return {
+    ...base,
     subject: `Application update: ${event.jobTitle}`,
     text: `Hello ${event.recipient.name},\n\nYour application for ${event.jobTitle} changed from ${event.previousStatus} to ${event.newStatus}.\nApplication: ${event.applicationId}\n`,
     html: `<p>Hello ${escapeHtml(event.recipient.name)},</p><p>Your application for <strong>${escapeHtml(event.jobTitle)}</strong> changed from ${escapeHtml(event.previousStatus)} to <strong>${escapeHtml(event.newStatus)}</strong>.</p><p>Application: ${escapeHtml(event.applicationId)}</p>`,
@@ -41,7 +58,7 @@ export function createMailer() {
     greetingTimeout: 5000,
     socketTimeout: 10000,
   });
-  return async (event: StatusEvent) => {
+  return async (event: NotificationEvent) => {
     const result = await transport.sendMail(
       email(
         event,

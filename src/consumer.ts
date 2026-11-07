@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
 import type { ConfirmChannel, ConsumeMessage } from "amqplib";
-import { validateEvent } from "./event";
+import { validateNotificationEvent } from "./event";
 import { QUEUE } from "./broker";
 import { logger } from "./logger";
 
@@ -27,9 +27,9 @@ export async function handleMessage(
     logger.error("Invalid JSON dead-lettered", { requestId });
     return;
   }
-  if (!validateEvent(payload) || payload.previousStatus === payload.newStatus) {
+  if (!validateNotificationEvent(payload)) {
     ch.nack(msg, false, false);
-    logger.error("Invalid status event dead-lettered", { requestId });
+    logger.error("Invalid notification event dead-lettered", { requestId });
     return;
   }
   await pool.query(
