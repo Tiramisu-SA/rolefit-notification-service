@@ -1,6 +1,6 @@
 # RoleFit Notification Service
 
-Consumes application-status events from RabbitMQ, stores an idempotent delivery inbox in its own PostgreSQL database, and sends text/HTML email via configurable SMTP. Mailpit is the default local destination. It has no public notification creation API and does not query Application's database.
+Consumes application-status and job deadline reminder (`job.deadline.reminder.v1`, FR-17) events from the one notification queue (validated and dispatched by `eventType`), stores an idempotent delivery inbox in its own PostgreSQL database, and sends text/HTML email via configurable SMTP. Mailpit is the default local destination. It has no public notification creation API and does not query Application's database.
 
 ## Local setup
 

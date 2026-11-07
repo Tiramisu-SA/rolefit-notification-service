@@ -1,6 +1,7 @@
 import Ajv from "ajv";
 import addFormats from "ajv-formats";
 import schema from "../contracts/application.status.changed.v1.schema.json";
+import reminderSchema from "../contracts/job.deadline.reminder.v1.schema.json";
 
 export const STATUSES = [
   "Submitted",
@@ -26,3 +27,29 @@ export interface StatusEvent {
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
 export const validateEvent = ajv.compile<StatusEvent>(schema);
+export interface ReminderEvent {
+  eventId: string;
+  schemaVersion: 1;
+  eventType: "job.deadline.reminder.v1";
+  occurredAt: string;
+  jobId: string;
+  candidateId: string;
+  recipient: { name: string; email: string };
+  jobTitle: string;
+  deadline: string; // ISO-8601 date-time
+}
+export type NotificationEvent = StatusEvent | ReminderEvent;
+export const validateReminderEvent = ajv.compile<ReminderEvent>(reminderSchema);
+/** Dispatches by eventType; the no-op rule (previousStatus === newStatus) applies only to status events. */
+export function validateNotificationEvent(
+  payload: unknown,
+): payload is NotificationEvent {
+  const type = (payload as { eventType?: unknown } | null)?.eventType;
+  if (type === "job.deadline.reminder.v1")
+    return validateReminderEvent(payload);
+  if (type === "application.status.changed.v1")
+    return (
+      validateEvent(payload) && payload.previousStatus !== payload.newStatus
+    );
+  return false;
+}
