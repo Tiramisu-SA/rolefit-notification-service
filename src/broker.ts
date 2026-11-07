@@ -4,6 +4,7 @@ import amqp, {
   type ConsumeMessage,
 } from "amqplib";
 import { setTimeout as delay } from "node:timers/promises";
+import { logger } from "./logger";
 
 export const EXCHANGE = "rolefit.events";
 export const KEY = "application.status.changed.v1";
@@ -107,14 +108,14 @@ export class Broker {
         if (this.onConnected) await this.onConnected(ch);
         this.channel = ch;
         this.ready = true;
-        console.log("RabbitMQ connected");
+        logger.info("RabbitMQ connected");
         await closed;
       } catch {
         this.ready = false;
         this.channel = undefined;
         await this.connection?.close().catch(() => {});
         this.connection = undefined;
-        if (!this.stopped) console.error("RabbitMQ unavailable; reconnecting");
+        if (!this.stopped) logger.error("RabbitMQ unavailable; reconnecting");
       }
       if (!this.stopped) await delay(1000);
     }

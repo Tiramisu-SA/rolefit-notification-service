@@ -18,6 +18,10 @@ An event is acknowledged only after inserting its delivery job. A unique event I
 
 The local stack uses persistent volumes for PostgreSQL, RabbitMQ, and Mailpit. Run `docker compose stop` from Application's repo to stop without erasing data.
 
+## Logs and request id
+
+Logs are JSON, one object per line. The id of the request that caused an event arrives as the AMQP correlation id, is stored in `notification_deliveries.request_id`, and is written as `requestId` on the lines for receiving the event and for each delivery attempt. A missing or unsafe correlation id is dropped and the event is still processed. Logs never contain the recipient or raw SMTP errors.
+
 ## SMTP configuration
 
 `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, optional `SMTP_USER`/`SMTP_PASSWORD`, `SMTP_SECURE`, and `SMTP_REQUIRE_TLS`. `SMTP_SECURE=true` selects implicit TLS (typically port 465); `SMTP_REQUIRE_TLS=true` requires STARTTLS for providers that use it. TLS certificate verification remains enabled. Local Mailpit uses port 1025 without TLS/authentication. Store credentials only in ignored environment files or deployment secrets. Real provider setup, sender/domain verification, and real-recipient delivery testing are future work.

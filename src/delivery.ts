@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { Pool } from "pg";
 import type { StatusEvent } from "./event";
 import { isPermanent } from "./email";
+import { logger } from "./logger";
 export const RETRY_SECONDS = [10, 30, 60] as const;
 export function retryDelay(attempt: number, permanent: boolean): number | null {
   return permanent || attempt >= 4
@@ -28,6 +29,8 @@ export async function deliverNext(
   );
   const job = rows[0];
   if (!job) return false;
+  // Null for deliveries stored before request ids were recorded.
+  const context = { requestId: job.request_id ?? undefined, eventId: job.event_id };
   try {
     await send(job.payload);
   } catch (error) {
@@ -47,8 +50,10 @@ export async function deliverNext(
         category,
       ],
     );
-    console.error(
-      `Notification ${job.event_id}: ${wait === null ? "failed" : "retry scheduled"}`,
+    // Only the safe category: raw SMTP errors can hold credentials or the recipient's address.
+    logger.error(
+      wait === null ? "email delivery failed" : "email delivery will retry",
+      { ...context, attempt: job.attempts, reason: category },
     );
     return true;
   }
@@ -57,6 +62,6 @@ export async function deliverNext(
     "UPDATE notification_deliveries SET status='sent',sent_at=now(),lease_until=NULL,lease_token=NULL,last_error=NULL WHERE event_id=$1 AND lease_token=$2",
     [job.event_id, token],
   );
-  console.log(`Notification ${job.event_id}: SMTP accepted`);
+  logger.info("email accepted by SMTP", context);
   return true;
 }
