@@ -5,7 +5,7 @@ import { QUEUE } from "./broker";
 import { logger } from "./logger";
 
 // Letters, digits, ".", "_", "-" only, so a message cannot inject log lines. Same rule as the gateway.
-const SAFE_ID = /^[A-Za-z0-9._-]{1,128}$/;
+export const SAFE_ID = /^[A-Za-z0-9._-]{1,128}$/;
 
 /** The id of the request that caused this event; undefined if the publisher sent none or an unsafe one. */
 function requestIdOf(msg: ConsumeMessage): string | undefined {
