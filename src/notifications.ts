@@ -35,15 +35,26 @@ function utcDate(iso: string): string {
   return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-/** Only whitelisted fields are copied; the recipient email never leaves the payload. */
-export function toNotification(row: NotificationRow): AppNotification {
-  const p = row.payload;
+const isStr = (v: unknown): v is string => typeof v === "string" && v !== "";
+
+/**
+ * Only whitelisted fields are copied; the recipient email never leaves the payload.
+ * Returns null for rows of an unknown type or with missing fields, so one bad row
+ * is skipped instead of rendering "undefined" or failing the whole list.
+ */
+export function toNotification(row: NotificationRow): AppNotification | null {
+  const p = row.payload ?? {};
+  const created = new Date(row.received_at);
+  if (!isStr(row.event_id) || Number.isNaN(created.getTime())) return null;
   const common = {
     id: row.event_id,
-    createdAt: new Date(row.received_at).toISOString(),
+    createdAt: created.toISOString(),
     read: row.read_at != null,
   };
-  if (p.eventType === "job.deadline.reminder.v1")
+  if (p.eventType === "job.deadline.reminder.v1") {
+    if (!isStr(p.jobTitle) || !isStr(p.jobId) || !isStr(p.deadline))
+      return null;
+    if (Number.isNaN(new Date(p.deadline).getTime())) return null;
     return {
       ...common,
       type: "job.deadline.reminder",
@@ -51,13 +62,19 @@ export function toNotification(row: NotificationRow): AppNotification {
       body: `${p.jobTitle} closes on ${utcDate(p.deadline)}. You prepared a resume but have not applied yet.`,
       link: `/seeker/jobs/${p.jobId}`,
     };
-  return {
-    ...common,
-    type: "application.status.changed",
-    title: "Application update",
-    body: `Your application for ${p.jobTitle} moved from ${p.previousStatus} to ${p.newStatus}.`,
-    link: "/seeker/applications",
-  };
+  }
+  if (p.eventType === "application.status.changed.v1") {
+    if (!isStr(p.jobTitle) || !isStr(p.previousStatus) || !isStr(p.newStatus))
+      return null;
+    return {
+      ...common,
+      type: "application.status.changed",
+      title: "Application update",
+      body: `Your application for ${p.jobTitle} moved from ${p.previousStatus} to ${p.newStatus}.`,
+      link: "/seeker/applications",
+    };
+  }
+  return null;
 }
 
 export interface Queryable {
@@ -76,7 +93,7 @@ export async function listMine(db: Queryable, userId: string) {
     [userId],
   );
   return {
-    notifications: list.rows.map(toNotification),
+    notifications: list.rows.flatMap((r) => toNotification(r) ?? []),
     unreadCount: Number(unread.rows[0]?.count ?? 0),
   };
 }

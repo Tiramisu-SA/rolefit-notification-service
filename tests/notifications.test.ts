@@ -83,7 +83,7 @@ async function withApp<T>(
 }
 
 test("maps a status event", () => {
-  const n = toNotification(status("e1", "u", "2026-11-01T10:00:00Z"));
+  const n = toNotification(status("e1", "u", "2026-11-01T10:00:00Z"))!;
   assert.deepEqual(n, {
     id: "e1",
     type: "application.status.changed",
@@ -99,7 +99,7 @@ test("maps a reminder event with a UTC date", () => {
   const n = toNotification({
     ...reminder("e2", "u", "2026-11-02T10:00:00Z"),
     read_at: new Date(),
-  });
+  })!;
   assert.equal(n.type, "job.deadline.reminder");
   assert.equal(n.title, "Deadline reminder");
   assert.equal(
@@ -210,5 +210,30 @@ test("unknown routes still 404 and health works", async () => {
     const res = await fetch(`${url}/nope`);
     assert.equal(res.status, 404);
     assert.equal(((await res.json()) as any).error.code, "ROUTE_NOT_FOUND");
+  });
+});
+
+test("malformed rows are skipped, not rendered or turned into errors", () => {
+  const ok = status("ok", "u", "2026-11-01T10:00:00Z");
+  const unknown = status("x", "u", "2026-11-01T10:00:00Z", { eventType: "other.v1" });
+  const badDeadline = reminder("r", "u", "2026-11-01T10:00:00Z");
+  badDeadline.payload.deadline = "not a date";
+  const noNew = status("n", "u", "2026-11-01T10:00:00Z", { newStatus: undefined });
+  assert.equal(toNotification(unknown), null);
+  assert.equal(toNotification(badDeadline), null);
+  assert.equal(toNotification(noNew), null);
+  assert.ok(toNotification(ok));
+});
+
+test("list skips malformed rows", async () => {
+  const rows = [
+    status("ok", "u", "2026-11-01T10:00:00Z"),
+    status("bad", "u", "2026-11-02T10:00:00Z", { newStatus: undefined }),
+  ];
+  await withApp(fakeDb(rows), async (url) => {
+    const res = await fetch(`${url}/api/notifications/mine`, { headers: { "x-user-id": "u" } });
+    assert.equal(res.status, 200);
+    const body: any = await res.json();
+    assert.deepEqual(body.notifications.map((n: any) => n.id), ["ok"]);
   });
 });

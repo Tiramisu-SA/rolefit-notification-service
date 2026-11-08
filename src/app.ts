@@ -1,6 +1,12 @@
 import express from "express";
+import { SAFE_ID } from "./consumer";
 import { logger } from "./logger";
 import { listMine, markAllRead, type Queryable } from "./notifications";
+
+function safeRequestId(req: express.Request): string | undefined {
+  const id = req.get("x-request-id");
+  return id !== undefined && SAFE_ID.test(id) ? id : undefined;
+}
 
 function sendError(
   res: express.Response,
@@ -50,10 +56,10 @@ export function createApp(db: Queryable, brokerReady: () => boolean) {
           "Authentication is required",
         );
       try {
-        await run(userId, req.get("x-request-id") ?? undefined, res);
+        await run(userId, safeRequestId(req), res);
       } catch {
         logger.error("Notification storage failed", {
-          requestId: req.get("x-request-id") ?? undefined,
+          requestId: safeRequestId(req),
         });
         sendError(
           res,
