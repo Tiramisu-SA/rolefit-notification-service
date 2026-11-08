@@ -30,6 +30,10 @@ Logs are JSON, one object per line. The id of the request that caused an event a
 
 Configure a dedicated Notification database/user with `DATABASE_URL`, `DATABASE_SSL=true`, and an optional `DATABASE_CA_FILE`. Run the same migrations; move existing records with an explicit database transfer if desired. Never use Application's private database or share credentials between services.
 
+## Seeker notifications
+
+`GET /api/notifications/mine` and `POST /api/notifications/mine/read` (identity via `x-user-id`, set by the gateway) serve the in-app bell from `notification_deliveries`; read state is `read_at` (migration `003_read_state.sql`). See `API.md`.
+
 ## Health and checks
 
 HTTP port 3005 exposes `/health` (liveness) and `/ready` (PostgreSQL and RabbitMQ availability). SMTP outages are handled through durable retries and do not block consuming events into the inbox. Read delivery records (`status`, `attempts`, `next_attempt_at`, `lease_until`, `last_error`, `sent_at`) and safe logs to inspect failed jobs/backlogs. No JWTs or raw connection strings are logged.

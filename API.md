@@ -80,6 +80,17 @@ Broker confirmation, inbox acceptance, and email acceptance are distinct stages.
 
 No caller identity is needed for these internal health checks. Other paths return 404 with the standard error envelope. The gateway should not expose this service publicly. SMTP downtime does not prevent inbox acceptance; inspect failed/pending records and logs for delivery problems.
 
+## Seeker notifications HTTP
+
+Identity comes from the `x-user-id` header set by the gateway; without it the response is 401 `UNAUTHENTICATED` in the standard `{ "error": { "code", "message" } }` envelope. A notification is shown whatever its email delivery status.
+
+| Endpoint                           | Meaning                                                                                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/notifications/mine`      | 200 `{ notifications, unreadCount }`: the last 20 for the caller, newest first (`id`, `type`, `title`, `body`, `link`, `createdAt`, `read`). `unreadCount` counts all unread rows. |
+| `POST /api/notifications/mine/read` | 204; marks all the caller's unread notifications read. No body.                                                                                                                 |
+
+The recipient email and other payload fields are never returned. Storage failures return 503 `SERVICE_UNAVAILABLE`.
+
 ## Configuration and ownership
 
 `DATABASE_URL` points to Notification's own database. `DATABASE_SSL=true` enables certificate verification; `DATABASE_CA_FILE` can supply the provider CA. `RABBITMQ_URL` supplies broker connection settings. SMTP settings are listed in `.env.example` and README. Cloud accounts, sender/domain verification, hosted database provisioning, and real email delivery are not part of this local implementation.
